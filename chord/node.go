@@ -27,7 +27,7 @@ type Node struct {
 	SuccessorList     [successorListLen + 1]IP
 	FingerTable       [M + 1]IP
 	Predecessor       *IP
-	Run               bool
+	InNet             bool
 	PreData           map[string]string
 	DataLock          sync.Mutex
 	PreDataLock       sync.Mutex
@@ -258,7 +258,7 @@ func (n *Node) fixFingerTable(next *int) {
 }
 
 func (n *Node) CheckRun(_ int , run *bool) error {
-	*run = n.Run
+	*run = n.InNet
 	return nil
 }
 

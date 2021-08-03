@@ -31,14 +31,14 @@ func (c *ChordNode) Run() {
 	listener , _ := net.Listen("tcp" , c.N.Self.Addr)
 	c.Listener = listener
 	go c.Server.Accept(c.Listener)
-	c.N.Run = true
 }
 
 func (c *ChordNode) Create() {
 	c.N.SuccessorList[1] = c.N.Self
 	c.N.Predecessor = nil
+	c.N.InNet = true
 	go func(){
-		for c.N.Run {
+		for c.N.InNet {
 			c.N.StabilizeLock.Lock()
 			c.N.stabilize()
 			c.N.StabilizeLock.Unlock()
@@ -46,14 +46,14 @@ func (c *ChordNode) Create() {
 		}
 	}()
 	go func(){
-		for c.N.Run {
+		for c.N.InNet {
 			c.N.checkPre()
 			time.Sleep(CheckWaitTime)
 		}
 	}()
 	go func(){
 		next := 1
-		for c.N.Run {
+		for c.N.InNet {
 			c.N.FingerTableLock.Lock()
 			c.N.fixFingerTable(&next)
 			c.N.FingerTableLock.Unlock()
@@ -64,6 +64,7 @@ func (c *ChordNode) Create() {
 
 func (c *ChordNode) Join(addr string) bool { //***只有dial失败时返回false
 	c.N.Predecessor = nil
+	c.N.InNet = true
 	cli , err := dial(addr)
 	if err != nil {
 		return false
@@ -108,7 +109,7 @@ func (c *ChordNode) Join(addr string) bool { //***只有dial失败时返回false
 		return c.Join(addr)
 	}
 	go func(){
-		for c.N.Run {
+		for c.N.InNet {
 			c.N.StabilizeLock.Lock()
 			c.N.stabilize()
 			c.N.StabilizeLock.Unlock()
@@ -116,14 +117,14 @@ func (c *ChordNode) Join(addr string) bool { //***只有dial失败时返回false
 		}
 	}()
 	go func(){
-		for c.N.Run {
+		for c.N.InNet {
 			c.N.checkPre()
 			time.Sleep(CheckWaitTime)
 		}
 	}()
 	go func(){
 		next := 1
-		for c.N.Run {
+		for c.N.InNet {
 			c.N.FingerTableLock.Lock()
 			c.N.fixFingerTable(&next)
 			c.N.FingerTableLock.Unlock()
@@ -134,20 +135,20 @@ func (c *ChordNode) Join(addr string) bool { //***只有dial失败时返回false
 }
 
 func (c *ChordNode) Quit() {
-	if c.N.Run{
+	if c.N.InNet {
 		cli , err := dial(c.N.getFirstValidSuccessor().Addr)
 		if err == nil {
 			err = cli.Call("Node.AddDataMap" , &c.N.Data , nil)
 			cli.Close()
 		}
-		c.N.Run = false
+		c.N.InNet = false
 		c.Listener.Close()
 	}
 }
 
 func (c *ChordNode) ForceQuit() {
-	if c.N.Run {
-		c.N.Run = false
+	if c.N.InNet {
+		c.N.InNet = false
 		_ = c.Listener.Close()
 	}
 }
