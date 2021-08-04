@@ -97,8 +97,6 @@ func merge(a [K]IP , b [K]IP , target *big.Int) [K]IP{
 	return con
 }
 
-
-
 func dial(addr string) (*rpc.Client , error) { //***多次dial
 	var err error
 	var c *rpc.Client

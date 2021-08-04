@@ -19,21 +19,21 @@ func forceQuitTest() (bool, int, int) {
 		panicked = true
 	}()
 
-	nodes := new([forceQuitNodeSize + 1]dhtNode)
-	nodeAddresses := new([forceQuitNodeSize + 1]string)
+	nodes := new([NodeSize + 1]dhtNode)
+	nodeAddresses := new([NodeSize + 1]string)
 	kvMap := make(map[string]string)
-	nodesInNetwork := make([]int, 0, basicTestNodeSize+1)
+	nodesInNetwork := make([]int, 0, TestNodeSize+1)
 
 	/* InNet all nodes. */
 	wg = new(sync.WaitGroup)
-	for i := 0; i <= forceQuitNodeSize; i++ {
+	for i := 0; i <= NodeSize; i++ {
 		nodes[i] = NewNode(firstPort + i)
 		nodeAddresses[i] = portToAddr(localAddress, firstPort+i)
 
 		wg.Add(1)
 		go nodes[i].Run()
 	}
-	time.Sleep(forceQuitAfterRunSleepTime)
+	time.Sleep(AfterRunSleepTime)
 
 	/* Node 0 creates a new network. All notes join the network. */
 	joinInfo := testInfo{
@@ -44,7 +44,7 @@ func forceQuitTest() (bool, int, int) {
 	nodes[0].Create()
 	nodesInNetwork = append(nodesInNetwork, 0)
 	_, _ = cyan.Printf("Start joining\n")
-	for i := 1; i <= forceQuitNodeSize; i++ {
+	for i := 1; i <= NodeSize; i++ {
 		addr := nodeAddresses[rand.Intn(i)]
 		if !nodes[i].Join(addr) {
 			joinInfo.fail()
@@ -53,11 +53,11 @@ func forceQuitTest() (bool, int, int) {
 		}
 		nodesInNetwork = append(nodesInNetwork, i)
 
-		time.Sleep(forceQuitJoinSleepTime)
+		time.Sleep(JoinSleepTime)
 	}
 	joinInfo.finish(&forceQuitFailedCnt, &forceQuitTotalCnt)
 
-	time.Sleep(forceQuitAfterJoinSleepTime)
+	time.Sleep(AfterJoinSleepTime)
 
 	/* Put. */
 	putInfo := testInfo{
@@ -71,7 +71,7 @@ func forceQuitTest() (bool, int, int) {
 		value := randString(lengthOfKeyValue)
 		kvMap[key] = value
 
-		if !nodes[rand.Intn(forceQuitNodeSize+1)].Put(key, value) {
+		if !nodes[rand.Intn(NodeSize+1)].Put(key, value) {
 			putInfo.fail()
 		} else {
 			putInfo.success()
@@ -80,7 +80,7 @@ func forceQuitTest() (bool, int, int) {
 	putInfo.finish(&forceQuitFailedCnt, &forceQuitTotalCnt)
 
 	/* 10 - 1 = 9 rounds in total. */
-	for t := 1; t <= forceQuitRoundNum - 1; t++ {
+	for t := 1; t <= RoundNum- 1; t++ {
 		_, _ = cyan.Printf("Force Quit Round %d\n", t)
 
 		/* Force quit. */
@@ -91,7 +91,7 @@ func forceQuitTest() (bool, int, int) {
 			nodes[nodesInNetwork[idxInArray]].ForceQuit()
 			nodesInNetwork = removeFromArray(nodesInNetwork, idxInArray)
 
-			time.Sleep(forceQuitFQSleepTime)
+			time.Sleep(forceQuitSleepTime)
 		}
 
 		/* Get all data. */
@@ -118,7 +118,7 @@ func forceQuitTest() (bool, int, int) {
 	}
 
 	/* All nodes quit. */
-	for i := 0; i <= forceQuitNodeSize; i++ {
+	for i := 0; i <= NodeSize; i++ {
 		nodes[i].Quit()
 	}
 
@@ -130,7 +130,7 @@ func myTest1() (int , int) { // findNode
 
 	nodes := new([50 + 1]dhtNode)
 	nodeAddresses := new([50 + 1]string)
-	nodesInNetwork := make([]int, 0, basicTestNodeSize+1)
+	nodesInNetwork := make([]int, 0, TestNodeSize+1)
 
 	/* InNet all nodes. */
 	wg = new(sync.WaitGroup)
@@ -141,7 +141,7 @@ func myTest1() (int , int) { // findNode
 		wg.Add(1)
 		go nodes[i].Run()
 	}
-	time.Sleep(forceQuitAfterRunSleepTime)
+	time.Sleep(AfterRunSleepTime)
 
 	/***** join *****/
 	nodes[0].Create()
@@ -151,10 +151,10 @@ func myTest1() (int , int) { // findNode
 		addr := nodeAddresses[rand.Intn(i)]
 		nodes[i].Join(addr)
 		nodesInNetwork = append(nodesInNetwork, i)
-		time.Sleep(forceQuitJoinSleepTime)
+		time.Sleep(JoinSleepTime)
 	}
 	_, _ = green.Printf("join complete\n")
-	time.Sleep(forceQuitAfterJoinSleepTime)
+	time.Sleep(AfterJoinSleepTime)
 
 	key := randString(lengthOfKeyValue)
 	value := randString(lengthOfKeyValue)
@@ -175,4 +175,75 @@ func myTest1() (int , int) { // findNode
 	}
 	_, _ = green.Printf("get complete\n")
 	return totalcnt , failcnt
+}
+
+func myTest2() bool { // findNode
+	_, _ = yellow.Println("Start MyTest2")
+
+	nodes := new([10 + 1]dhtNode)
+	nodeAddresses := new([10 + 1]string)
+	nodesInNetwork := make([]int, 0, TestNodeSize+1)
+
+	/* InNet all nodes. */
+	wg = new(sync.WaitGroup)
+	for i := 0; i <= 10; i++ {
+		nodes[i] = NewNode(firstPort + i)
+		nodeAddresses[i] = portToAddr(localAddress, firstPort+i)
+
+		wg.Add(1)
+		go nodes[i].Run()
+	}
+	time.Sleep(AfterRunSleepTime)
+
+	/***** join *****/
+	nodes[0].Create()
+	nodesInNetwork = append(nodesInNetwork, 0)
+	_, _ = cyan.Printf("Start joining\n")
+	for i := 1; i <= 10; i++ {
+		addr := nodeAddresses[rand.Intn(i)]
+		nodes[i].Join(addr)
+		nodesInNetwork = append(nodesInNetwork, i)
+		time.Sleep(JoinSleepTime)
+	}
+	_, _ = green.Printf("join complete\n")
+	time.Sleep(AfterJoinSleepTime)
+
+	key := randString(lengthOfKeyValue)
+	value := randString(lengthOfKeyValue)
+	key2 := randString(lengthOfKeyValue)
+	value2 := randString(lengthOfKeyValue)
+	nodes[0].Put(key , value)
+	nodes[0].Put(key2 , value2)
+
+	/***** nearestNode *****/
+	_, _ = cyan.Printf("Start get\n")
+
+	ch := make(chan string)
+	go func() {
+		ticker := time.Tick(time.Second)
+		for i := range ticker {
+			_ , _ = cyan.Println(i)
+			ok , v := nodes[1].Get(key)
+			if ok && v == value {
+				continue
+			} else {
+				ch <- v
+				break
+			}
+		}
+	}()
+
+	select {
+	case res := <- ch:
+		_ , _ = red.Println(res)
+		return false
+	case <- time.After(15 * time.Second):
+		ok2 , v2 := nodes[1].Get(key2)
+		if ok2 && v2 == value2 {
+			_ , _ = red.Println(v2)
+			return false
+		}
+	}
+	_, _ = green.Printf("get complete\n")
+	return true
 }

@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"net/rpc"
 	"sort"
+	"time"
 )
 
 func ping(addr string) bool { //***多次ping确保
@@ -29,8 +30,11 @@ func ping(addr string) bool { //***多次ping确保
 
 func (n *Node) Store(kvPair KVpair , _ *int) error {
 	n.DataLock.Lock()
-	n.Data[kvPair.Key] = kvPair.Value
+	n.DataTimeLock.Lock()
+	n.Data.D[kvPair.Key] = kvPair.Value
+	n.Data.T[kvPair.Key] = time.Now()
 	n.DataLock.Unlock()
+	n.DataTimeLock.Unlock()
 	return nil
 }
 
@@ -124,7 +128,7 @@ func (n *Node) FindNode(target *big.Int , container *[K]IP) error{
 }
 
 func (n *Node) FindValue(key string , value *string) error {
-	val , ok := n.Data[key]
+	val , ok := n.Data.D[key]
 	if !ok {
 		*value = ""
 		return errors.New("no find")

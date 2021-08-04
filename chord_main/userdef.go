@@ -1,7 +1,7 @@
 package main
 
 import (
-	chord "DHT/chord"
+	"DHT/chord"
 )
 
 func NewNode(port int) dhtNode {

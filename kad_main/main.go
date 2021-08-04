@@ -37,8 +37,17 @@ func main() {
 			_, _ = green.Printf("myTest1 passed with fail rate %.4f\n", FailRate)
 		}
 		/* ------ myTest1 Begins ------ */
-	}
 
+	case "myTest2":
+		/* ------ myTest1 Begins ------ */
+		ok := myTest2()
+		if !ok {
+			_, _ = red.Printf("myTest1 failed")
+		} else {
+			_, _ = green.Printf("myTest1 passed")
+		}
+		/* ------ myTest1 Begins ------ */
+	}
 }
 
 func usage() {

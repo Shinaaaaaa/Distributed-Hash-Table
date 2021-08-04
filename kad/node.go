@@ -11,6 +11,7 @@ const (
 	K = 20
 	bucketNum = 160
 	WaitTime = 500 * time.Millisecond
+	StoreTime = 10 * time.Second
 )
 
 type IP struct {
@@ -96,17 +97,35 @@ func (b *bucket) addBucket(n IP) bool {
 	return flag
 }
 
+type data struct {
+	D map[string]string
+	T map[string]time.Time
+}
+
 type Node struct {
 	Self     IP
 	K_bucket [bucketNum]bucket
 	K_cnt    int
-	Data     map[string]string
+	Data     data
 	DataLock sync.Mutex
+	DataTimeLock sync.Mutex
 	InNet    bool
 }
 
 func (n *Node) CheckRun(_ int , run *bool) error {
 	*run = n.InNet
+	return nil
+}
+
+func (n *Node) Refresh(key string , _ *int) error {
+	_ , ok := n.Data.D[key]
+	if !ok {
+		return errors.New("no find")
+	} else {
+		n.DataTimeLock.Lock()
+		n.Data.T[key] = time.Now()
+		n.DataTimeLock.Unlock()
+	}
 	return nil
 }
 
@@ -164,62 +183,38 @@ func (n *Node) query(key string) string {
 	var value string
 	err = cli.Call("Node.FindValue" , key , &value)
 	if err == nil  {
+		n.Refresh(key , nil)
 		return value
 	}
+	value = ""
 	con := n.nearestNode(target)
+	for i := 0 ; i < K && con[i].Addr != "" ; i++ {
+		var val string
+		cli , err = dial(con[i].Addr)
+		if err != nil {
+			continue
+		} else {
+			err = cli.Call("Node.FindValue" , key , &val)
+			if err != nil {
+				continue
+			} else {
+				value = val
+				break
+			}
+		}
+	}
 	for i := 0 ; i < K && con[i].Addr != "" ; i++ {
 		cli , err = dial(con[i].Addr)
 		if err != nil {
 			continue
 		} else {
-			err = cli.Call("Node.FindValue" , key , &value)
+			err = cli.Call("Node.Refresh" , key , nil)
 			if err != nil {
-				continue
-			} else {
-				return value
+				_ = cli.Call("Node.Store" , KVpair{key , value} , nil)
 			}
 		}
 	}
-	return ""
-	//target := SHA1(key)
-	//var con [K]IP
-	//var visit map[string]int
-	//visit = make(map[string]int)
-	//_ = n.FindNode(target , &con)
-	//for true {
-	//	var convis = false
-	//	for i := 0 ; i < K && con[i].Addr != "" ; i++ {
-	//		_ , ok := visit[key]
-	//		if !ok {
-	//			visit[key] = 1
-	//			cli , err := dial(con[i].Addr)
-	//			if err != nil {
-	//				continue
-	//			} else {
-	//				var value string
-	//				err = cli.Call("Node.FindValue" , key , &value)
-	//				if err != nil {
-	//					var tmp [K]IP
-	//					err = cli.Call("Node.FindNode" , target , &tmp)
-	//					_ = cli.Call("Node.AddNodeInBucket" , n.Self , nil)
-	//					_ = cli.Close()
-	//					if err == nil {
-	//						con = merge(con , tmp , target)
-	//					}
-	//				} else {
-	//					_ = cli.Close()
-	//					return value
-	//				}
-	//			}
-	//			convis = true
-	//			break
-	//		}
-	//	}
-	//	if !convis {
-	//		break
-	//	}
-	//}
-	//return ""
+	return value
 }
 
 func (n *Node) StoreData(kvPair KVpair , _ *int) error {
@@ -271,7 +266,7 @@ func (n *Node) JoinNet(addr string , _ *int) error {
 func (n *Node) releaseData() {
 	if n.InNet {
 		n.DataLock.Lock()
-		tmp := n.Data
+		tmp := n.Data.D
 		n.DataLock.Unlock()
 		for k , v := range tmp {
 			con := n.nearestNode(SHA1(k))
@@ -287,5 +282,25 @@ func (n *Node) releaseData() {
 			}
 		}
 		time.Sleep(WaitTime)
+	}
+}
+
+func (n *Node) checkDataTime() {
+	ticker := time.Tick(time.Second)
+	for range ticker {
+		n.DataTimeLock.Lock()
+		TimeMap := n.Data.T
+		n.DataTimeLock.Unlock()
+		for k , t := range TimeMap {
+			now := time.Now()
+			if t.Add(StoreTime).Before(now) {
+				n.DataLock.Lock()
+				n.DataTimeLock.Lock()
+				delete(n.Data.D , k)
+				delete(n.Data.T , k)
+				n.DataLock.Unlock()
+				n.DataTimeLock.Unlock()
+			}
+		}
 	}
 }
